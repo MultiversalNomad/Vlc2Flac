@@ -1,0 +1,5 @@
+E:\JPLC Data\Projects\C#\Vlc2Flac\Vlc2Flac\bin\Debug\Vlc2Flac.exe
+E:\JPLC Data\Projects\C#\Vlc2Flac\Vlc2Flac\bin\Debug\Vlc2Flac.pdb
+E:\JPLC Data\Projects\C#\Vlc2Flac\Vlc2Flac\obj\x86\Debug\Vlc2Flac.csprojResolveAssemblyReference.cache
+E:\JPLC Data\Projects\C#\Vlc2Flac\Vlc2Flac\obj\x86\Debug\Vlc2Flac.exe
+E:\JPLC Data\Projects\C#\Vlc2Flac\Vlc2Flac\obj\x86\Debug\Vlc2Flac.pdb
