@@ -11,6 +11,7 @@ namespace Vlc2Flac
 	{
 		public static void Main(string[] args)
 		{
+			Console.OutputEncoding = System.Text.Encoding.UTF8;
 			args = new string[]{"-gui", "-c"};//, "-ucl"};
 			RunClass.Run(args);
 		}
@@ -128,6 +129,7 @@ namespace Vlc2Flac
 			Console.WriteLine("Vlc2Flac DONE!");
 			Console.Write("Press any key to close... ");
 			Console.ReadKey();
+			Console.Write("\n");
 		}
 	}
 
@@ -352,10 +354,17 @@ namespace Vlc2Flac
 					Console.WriteLine(editFile.FullName);
 					if ((newName != null) && (newName != ""))
 					{
+						string initialNewName = newName;
 						newName = String.Concat(newName, ".flac");
 						if (newName != editFile.Name)
 						{
 							string newFilePath = String.Concat(editFile.DirectoryName, @"\", newName);
+							Console.WriteLine("NEW FILE:");
+							Console.WriteLine(newFilePath);
+							if (File.Exists(newFilePath))
+							{
+								newFilePath = String.Concat(editFile.DirectoryName, @"\", initialNewName, "_NEW.flac");
+							}
 							File.Move(editFile.FullName, newFilePath);
 							Console.WriteLine("FINAL FILE:");
 							Console.WriteLine(newFilePath);
