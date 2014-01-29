@@ -1,9 +1,43 @@
+/*
+ * Program Title: Vlc2Flac
+ * Version: 0.9.0.1
+ * Author: Joseph Cassano (http://jplc.ca)
+ * Year: 2014
+ * Description:
+ * 		Interface for using the vlc, FlacFixer, and
+ * 		metaflac programs to create a proper FLAC
+ * 		file from a VLC-compatible media file.
+ * 		File paths for the vlc, FlacFixer, and
+ * 		metaflac programs are stored in a config.xml
+ * 		file in the same directory as the executable
+ * 		for Vlc2Flac.
+ * License:
+ * 		MIT License (see LICENSE.txt in the project's root
+ * 		directory for details).
+ * Target Framework:
+ * 		Mono / .NET 4.0
+ * References:
+ * 		atk-sharp
+ * 		gdk-sharp
+ * 		glib-sharp
+ * 		gtk-sharp
+ * 		System
+ * 		System.Xml
+ * External programs used in this program:
+ * 		vlc
+ * 		FlacFixer (created by me; can be found on GitHub)
+ * 		metaflac
+ * Confirmed Compatibility:
+ * 		Windows 7 64-bit
+ */
+
 using Gtk;
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Xml.Serialization;
 
 namespace Vlc2Flac
 {
@@ -12,7 +46,7 @@ namespace Vlc2Flac
 		public static void Main(string[] args)
 		{
 			Console.OutputEncoding = System.Text.Encoding.UTF8;
-			args = new string[]{"-gui", "-c"};//, "-ucl"};
+			//args = new string[]{"-gui", "-c"};//, "-ucl"}; // Test arguments
 			RunClass.Run(args);
 		}
 	}
@@ -82,6 +116,7 @@ namespace Vlc2Flac
 
 				if (!useGUI)
 				{
+					ConfigManager.DeserializeFromXml();
 					VLCHandler.Run(filePath, fixerForceOverwrite, fixerKeepTemp, deleteOriginal);
 				}
 			}
@@ -99,7 +134,7 @@ namespace Vlc2Flac
 				}
 
 				Application.Init();
-				CustomMainWindow myWin = new CustomMainWindow("Hello! 今日は！", !useCustomLoop);
+				CustomMainWindow myWin = new CustomMainWindow("Vlc2Flac", !useCustomLoop);
 
 				myWin.ShowAll();
 				myWin.Run();
@@ -115,11 +150,7 @@ namespace Vlc2Flac
 				{
 					Application.Run();
 				}
-				Console.WriteLine(myWin.entry.Text);
 				myWin.Destroy();
-				//GLib.Log.DefaultHandler("", GLib.LogLevelFlags.Message, entry.Text);
-				//GLib.Log.PrintLogFunction("", GLib.LogLevelFlags.Message, entry.Text);
-				//GLib.Log.PrintTraceLogFunction("", GLib.LogLevelFlags.Message, entry.Text);
 
 				if (!showConsole)
 				{
@@ -127,9 +158,135 @@ namespace Vlc2Flac
 				}
 			}
 			Console.WriteLine("Vlc2Flac DONE!");
-			Console.Write("Press any key to close... ");
-			Console.ReadKey();
-			Console.Write("\n");
+			//Console.Write("Press any key to close... ");
+			//Console.ReadKey();
+			//Console.Write("\n");
+		}
+	}
+
+	public static class ConfigManager
+	{
+		public static string exeVlcPath{ get; private set; }
+		public static string exeFlacFixerPath{ get; private set; }
+		public static string exeMetaFlacPath{ get; private set; }
+
+		private static string xmlPath;
+		private static Config currentConfig;
+		private static Config CurrentConfig
+		{
+			get
+			{
+				return currentConfig;
+			}
+			set
+			{
+				currentConfig = value;
+				exeVlcPath = currentConfig.exeVlcPath;
+				exeFlacFixerPath = currentConfig.exeFlacFixerPath;
+				exeMetaFlacPath = currentConfig.exeMetaFlacPath;
+			}
+		}
+
+		static ConfigManager()
+		{
+			xmlPath = String.Concat(new FileInfo(System.Reflection.Assembly.GetEntryAssembly().Location).DirectoryName, @"\config.xml");
+			CurrentConfig = new Config();
+		}
+
+		static public void SerializeToXml()
+		{
+			XmlSerializer serializer = new XmlSerializer(typeof(Config));
+			TextWriter textWriter = new StreamWriter(xmlPath, false, System.Text.Encoding.UTF8);
+			serializer.Serialize(textWriter, CurrentConfig);
+			textWriter.Close();
+		}
+
+		static public void DeserializeFromXml()
+		{
+			if (!File.Exists(xmlPath))
+			{
+				Config tempConfig = new Config();
+				if (CurrentConfig != tempConfig)
+				{
+					CurrentConfig = tempConfig;
+				}
+				SerializeToXml();
+			}
+			else
+			{
+				XmlSerializer deserializer = new XmlSerializer(typeof(Config));
+				TextReader textReader = new StreamReader(xmlPath, System.Text.Encoding.UTF8);
+				CurrentConfig = (Config)deserializer.Deserialize(textReader);
+				textReader.Close();
+			}
+		}
+
+		public class Config
+		{
+			public string exeVlcPath;
+			public string exeFlacFixerPath;
+			public string exeMetaFlacPath;
+
+			public Config()
+			{
+				exeVlcPath = @"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe";
+				exeFlacFixerPath = @"C:\Program Files (x86)\FlacFixer\FlacFixer\FlacFixer.exe";
+				exeMetaFlacPath = @"C:\Program Files (x86)\FLAC Frontend\tools\metaflac.exe";
+			}
+
+			public override bool Equals(object obj)
+			{
+				if (obj == null)
+				{
+					return false;
+				}
+
+				Config config = obj as Config;
+				/*				
+				if ((object)config == null)
+				{
+					return false;
+				}
+
+				return (exeVlcPath == config.exeVlcPath) && (exeFlacFixerPath == config.exeFlacFixerPath) && (exeMetaFlacPath == config.exeMetaFlacPath);
+				*/
+				return Equals(config);
+			}
+
+			public bool Equals(Config config)
+			{
+				if ((object)config == null)
+				{
+					return false;
+				}
+
+				return (exeVlcPath == config.exeVlcPath) && (exeFlacFixerPath == config.exeFlacFixerPath) && (exeMetaFlacPath == config.exeMetaFlacPath);
+			}
+
+			public override int GetHashCode()
+			{
+				return exeVlcPath.GetHashCode() ^ exeFlacFixerPath.GetHashCode() ^ exeMetaFlacPath.GetHashCode();
+			}
+
+			public static bool operator ==(Config configA, Config configB)
+			{
+				if (object.ReferenceEquals(configA, configB))
+				{
+					return true;
+				}
+
+				if (((object)configA == null) || ((object)configB == null))
+				{
+					return false;
+				}
+
+				return (configA.exeVlcPath == configB.exeVlcPath) && (configA.exeFlacFixerPath == configB.exeFlacFixerPath) && (configA.exeMetaFlacPath == configB.exeMetaFlacPath);
+			}
+
+			public static bool operator !=(Config configA, Config configB)
+			{
+				return !(configA == configB);
+			}
 		}
 	}
 
@@ -147,7 +304,7 @@ namespace Vlc2Flac
 		{
 			process = new Process();
 			startInfo = new ProcessStartInfo();
-			exeFlacFixer = new FileInfo(@"E:\JPLC Data\Projects\C#\FlacFixer\FlacFixer\bin\Debug\FlacFixer.exe");
+			exeFlacFixer = new FileInfo(ConfigManager.exeFlacFixerPath);
 			finalFilePath = "";
 			outputList = new List<string>();
 		}
@@ -167,7 +324,7 @@ namespace Vlc2Flac
 					startInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
 					startInfo.FileName = String.Concat(Environment.ExpandEnvironmentVariables("%SystemRoot%"), @"\System32\cmd.exe");
 					FileInfo outputTempFile = new FileInfo(String.Concat(initialFile.DirectoryName, @"\VLC_Output.flac"));
-					startInfo.Arguments = String.Concat("/C \"\"", @"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe", "\" -I dummy -vvv \"", initialFile.FullName, "\" --no-sout-video --sout-audio --no-sout-rtp-sap --no-sout-standard-sap --ttl=1 --sout-keep --sout=#transcode{acodec=flac}:std{mux=raw,dst=\"", outputTempFile.FullName, "\"} vlc://quit\"");
+					startInfo.Arguments = String.Concat("/C \"\"", ConfigManager.exeVlcPath, "\" -I dummy -vvv \"", initialFile.FullName, "\" --no-sout-video --sout-audio --no-sout-rtp-sap --no-sout-standard-sap --ttl=1 --sout-keep --sout=#transcode{acodec=flac}:std{mux=raw,dst=\"", outputTempFile.FullName, "\"} vlc://quit\"");
 					process.StartInfo = startInfo;
 					process.Start();
 					process.WaitForExit();
@@ -198,7 +355,7 @@ namespace Vlc2Flac
 					FileInfo outputFile = new FileInfo(outputPath);
 					File.Delete(outputTempFile.FullName);
 					File.WriteAllBytes(outputFile.FullName, byteArray);
-					//
+
 					string fixerOverwriteString;
 					if (fixerForceOverwrite)
 					{
@@ -217,7 +374,7 @@ namespace Vlc2Flac
 					{
 						fixerKeepTempString = "";
 					}
-					startInfo.Arguments = String.Concat("/C \"\"", @"E:\JPLC Data\Projects\C#\FlacFixer\FlacFixer\bin\Debug\FlacFixer.exe", "\" \"", outputFile.FullName, "\"",
+					startInfo.Arguments = String.Concat("/C \"\"", exeFlacFixer.FullName, "\" \"", outputFile.FullName, "\"",
 						fixerOverwriteString, fixerKeepTempString, " -do\"");
 					process.StartInfo = startInfo;
 					string tempOutput = "";
@@ -230,10 +387,8 @@ namespace Vlc2Flac
 					process.Close();
 					outputList = new List<string>(tempOutput.Split('\n'));
 					string checkString = "Output File: ";
-					//Console.WriteLine("outputList start");
 					foreach (string line in outputList)
 					{
-						//Console.WriteLine(line);
 						if (line != null)
 						{
 							string trimmedLine = line.Trim();
@@ -243,7 +398,6 @@ namespace Vlc2Flac
 							}
 						}
 					}
-					//Console.WriteLine("outputList end");
 				}
 			}
 			Console.WriteLine("VLC Handler complete.");
@@ -292,17 +446,10 @@ namespace Vlc2Flac
 					startInfo.UseShellExecute = false;
 					startInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
 					startInfo.FileName = String.Concat(Environment.ExpandEnvironmentVariables("%SystemRoot%"), @"\System32\cmd.exe");
-					string initialCommand = String.Concat("/C \"\"", @"C:\Program Files (x86)\FLAC Frontend\tools\metaflac.exe", "\" \"", editFile.FullName, "\" --no-utf8-convert");
+					string initialCommand = String.Concat("/C \"\"", ConfigManager.exeMetaFlacPath, "\" \"", editFile.FullName, "\" --no-utf8-convert");
 					string command = initialCommand;
-					Console.WriteLine(nameList.Count);
 					for (int i = 0; i < nameList.Count; i++)
 					{
-						/*
-						Console.WriteLine(removeList[i]);
-						Console.WriteLine(nameList[i]);
-						Console.WriteLine(addList[i]);
-						Console.WriteLine(valueList[i]);
-						*/
 						if ((nameList[i] != null) && (nameList[i] != ""))
 						{
 							if (removeList[i])
@@ -328,9 +475,7 @@ namespace Vlc2Flac
 						process.WaitForExit();
 						process.Close();
 					}
-					Console.WriteLine(initialCommand);
-					Console.WriteLine(command);
-					//
+
 					startInfo.Arguments = String.Concat(initialCommand, " --list\"");
 					process.StartInfo = startInfo;
 					string tempOutput = "";
@@ -341,17 +486,12 @@ namespace Vlc2Flac
 					}
 					process.WaitForExit();
 					process.Close();
-					//string[] tempArray = File.ReadAllLines(@"C:\Users\JPLC\Videos\RealPlayer Downloads\outputTest.txt");
-					//outputList = new List<string>(tempArray);
 					outputList = new List<string>(tempOutput.Split('\n'));
-					Console.WriteLine(outputList.Count);
 					foreach (string line in outputList)
 					{
 						Console.WriteLine(line);
 					}
-					//
-					Console.WriteLine("EDIT FILE:");
-					Console.WriteLine(editFile.FullName);
+
 					if ((newName != null) && (newName != ""))
 					{
 						string initialNewName = newName;
@@ -359,15 +499,11 @@ namespace Vlc2Flac
 						if (newName != editFile.Name)
 						{
 							string newFilePath = String.Concat(editFile.DirectoryName, @"\", newName);
-							Console.WriteLine("NEW FILE:");
-							Console.WriteLine(newFilePath);
 							if (File.Exists(newFilePath))
 							{
 								newFilePath = String.Concat(editFile.DirectoryName, @"\", initialNewName, "_NEW.flac");
 							}
 							File.Move(editFile.FullName, newFilePath);
-							Console.WriteLine("FINAL FILE:");
-							Console.WriteLine(newFilePath);
 						}
 					}
 				}
@@ -510,132 +646,94 @@ namespace Vlc2Flac
 			eventBox = new EventBox();
 			eventBox.CanFocus = true;
 			eventBox.CanDefault = true;
-			//eventBox.ButtonReleaseEvent += new ButtonReleaseEventHandler((curSender, curE) => Widget_ButtonRelease(curSender, curE, eventBox));
 			Add(eventBox);
-			//
-			//Layout layout = new Layout(new Adjustment(0d, 0d, 10d, 1d, 5d, 1000d), new Adjustment(0d, 0d, 0d, 0d, 0d, 0d));
-			//Layout layout = new Layout(null, null);
-			//eventBox.Add(layout);
-			//
+
 			vBox = new VBox();
-			//layout.Add(vBox);
 			eventBox.Add(vBox);
-			//
+
 			label = new Label();
-			label.Text = "Nice to meet you. 始めまして。";
+			label.Text = "Please choose a VLC-compatible file";
 			vBox.Add(label);
-			//
-			fileChooserButton = new FileChooserButton("wheeeee", FileChooserAction.Open);
-			//fileChooserButton.SelectMultiple = true; // Multiple files not supported.
+
+			fileChooserButton = new FileChooserButton(label.Text, FileChooserAction.Open);
 			vBox.Add(fileChooserButton);
-			/*
-			FileChooserDialog fileChooserDialog = new FileChooserDialog("whee", null, FileChooserAction.Open, "OK", ResponseType.Ok);
-			fileChooserDialog.SelectMultiple = true;
-			int response = fileChooserDialog.Run();
-			if ((ResponseType)response == ResponseType.Ok)
-			{
-				string[] tempArray = fileChooserDialog.Filenames;
-				foreach (string tempElement in tempArray)
-				{
-					Console.WriteLine(tempElement);
-				}
-			}
-			fileChooserDialog.Destroy();
-			*/
-			/*
-			FileChooserWidget fileChooserWidget = new FileChooserWidget(FileChooserAction.Open);
-			fileChooserWidget.SelectMultiple = true;
-			//fileChooserWidget.ButtonReleaseEvent += new ButtonReleaseEventHandler((curSender, curE) => Widget_ButtonRelease(curSender, curE, fileChooserWidget));
-			vBox.Add(fileChooserWidget);
-			*/
-			/*			
-			Widget[] tempArray = vBox.FocusChain;
-			Console.WriteLine("Focus Chain Start");
-			foreach (Widget tempElement in tempArray)
-			{
-				Console.WriteLine(tempElement.Name);
-			}
-			Console.WriteLine("Focus Chain End");
-			*/
-			//
+
 			label = new Label();
-			label.Text = "Whee";
+			label.Text = "FLAC tag editing options";
 			vBox.Add(label);
-			//
+
 			hBox = new HBox();
 			vBox.Add(hBox);
-			//
+
 			tagRemoveAll_checkButton = new CheckButton();
 			tagRemoveAll_checkButton.Label = "Select all for removal";
 			tagRemoveAll_checkButton.Clicked += new EventHandler((curSender, curE) => CheckButton_Clicked_SelectAll(curSender, curE, tagRemoveAll_checkButton, 0));
 			hBox.Add(tagRemoveAll_checkButton);
-			//
+
 			label = new Label();
 			label.Text = "Tag name";
 			hBox.Add(label);
-			//
+
 			label = new Label();
 			label.Text = "Tag value";
 			hBox.Add(label);
-			//
+
 			tagAddAll_checkButton = new CheckButton();
 			tagAddAll_checkButton.Label = "Select all for addition";
 			tagAddAll_checkButton.Clicked += new EventHandler((curSender, curE) => CheckButton_Clicked_SelectAll(curSender, curE, tagAddAll_checkButton, 1));
 			hBox.Add(tagAddAll_checkButton);
-			//
+
 			tag_vBox = new VBox();
 			vBox.Add(tag_vBox);
-			//
+
 			List<string> tagTitleList = new List<string>(){"TITLE", "ARTIST", "ALBUMARTIST", "ALBUM", "TRACKNUMBER"};
 			foreach (string tagTitle in tagTitleList)
 			{
 				AddTagEntryRow(false, tagTitle);
 			}
-			//
-			foreach (List<Entry> entryList in tag_entryList)
-			{
-				//Console.WriteLine(entryList.Count);
-				Console.WriteLine(String.Concat(entryList[0].Text, "=", entryList[1].Text));
-			}
-			//
+
 			hBox = new HBox();
 			button_hBox = hBox;
 			vBox.Add(hBox);
-			//
+
 			button = new Button();
 			button.Label = "Add Fields";
 			button.Clicked += new EventHandler(Button_Clicked_AddRow);
 			hBox.Add(button);
-			//
+
 			button = new Button();
 			button.Label = "Remove Fields";
 			button.Clicked += new EventHandler(Button_Clicked_DestroyRow);
 			hBox.Add(button);
-			//
+
 			conversion_checkButton = new CheckButton();
 			conversion_checkButton.Label = "Convert from vlc.exe-compatible file to FLAC file";
 			vBox.Add(conversion_checkButton);
-			//
+
 			tagEdit_checkButton = new CheckButton();
 			tagEdit_checkButton.Label = "Edit tags with metaflac.exe (tag removal first, tag addition second)";
 			vBox.Add(tagEdit_checkButton);
-			//
+
+			label = new Label();
+			label.Text = "Name of output file (without extension) (leave blank for same name as input file):";
+			vBox.Add(label);
+
 			newName_entry = new Entry();
 			vBox.Add(newName_entry);
-			//
+
 			button = new Button();
 			button.Label = "Run";
 			button.Clicked += new EventHandler(Button_Clicked_Run);
 			vBox.Add(button);
-			//
+
 			label = new Label();
 			label.Text = "Output Information";
 			vBox.Add(label);
-			//
+
 			textTagTable = new TextTagTable();
-			//
+
 			textBuffer = new TextBuffer(textTagTable);
-			//
+
 			textView = new TextView();
 			textView.Buffer = textBuffer;
 			textView.Editable = false;
@@ -644,17 +742,7 @@ namespace Vlc2Flac
 
 		private void Button_Clicked_AddRow(object sender, EventArgs e)
 		{
-			Console.WriteLine("Add Row");
-			//vBox.Remove(button_hBox);
-			//
 			AddTagEntryRow(true);
-			//
-			//vBox.Add(button_hBox);
-			foreach (List<Entry> entryList in tag_entryList)
-			{
-				//Console.WriteLine(entryList.Count);
-				Console.WriteLine(String.Concat(entryList[0].Text, "=", entryList[1].Text));
-			}
 		}
 
 		private void AddTagEntryRow(bool manualShow = false, string tagName = "", string tagValue = "")
@@ -666,26 +754,24 @@ namespace Vlc2Flac
 			{
 				hBox.Show();
 			}
-			//
+
 			tag_checkButtonList.Add(new List<CheckButton>());
 			AddTagCheckButton(manualShow);
-			//
+
 			List<string> entryTextList = new List<string>(){tagName, tagValue};
 			tag_entryList.Add(new List<Entry>());
 			foreach (string entryText in entryTextList)
 			{
 				AddTagEntry(manualShow, entryText);
 			}
-			//
+
 			AddTagCheckButton(manualShow);
-			//
 		}
 
 		private void AddTagEntry(bool manualShow = false, string tagText = "")
 		{
 			entry = new Entry();
 			entry.Text = tagText;
-			entry.KeyReleaseEvent += new KeyReleaseEventHandler((curSender, curE) => Entry_KeyRelease(curSender, curE, entry));
 			tag_entryList[tag_entryList.Count - 1].Add(entry);
 			hBox.Add(entry);
 			if (manualShow)
@@ -707,8 +793,6 @@ namespace Vlc2Flac
 
 		private void Button_Clicked_DestroyRow(object sender, EventArgs e)
 		{
-			Console.WriteLine("Destroy Row");
-			//vBox.Remove(button_hBox);
 			if (entry_hBoxList.Count > 0)
 			{
 				entry_hBoxList[entry_hBoxList.Count - 1].Destroy();
@@ -716,40 +800,6 @@ namespace Vlc2Flac
 				tag_entryList.RemoveAt(tag_entryList.Count - 1);
 				tag_checkButtonList.RemoveAt(tag_checkButtonList.Count - 1);
 			}
-			//vBox.Add(button_hBox);
-			foreach (List<Entry> entryList in tag_entryList)
-			{
-				//Console.WriteLine(entryList.Count);
-				Console.WriteLine(String.Concat(entryList[0].Text, "=", entryList[1].Text));
-			}
-		}
-
-		private void Widget_ButtonRelease(object sender, ButtonReleaseEventArgs e, Widget activeWidget)
-		{
-			// Optional: Fix problem dealing with "stacked" calls. Not a huge issue; more cosmetic.
-			Console.WriteLine(activeWidget.Name);
-			if (e.Event.Button == 1)
-			{
-				Console.WriteLine("Left Click");
-			}
-			else if (e.Event.Button == 2)
-			{
-				Console.WriteLine("Middle Click");
-			}
-			else if (e.Event.Button == 3)
-			{
-				Console.WriteLine("Right Click");
-			}
-			activeWidget.HasFocus = true;
-		}
-
-		private void Entry_KeyRelease(object sender, KeyReleaseEventArgs e, Entry activeEntry)
-		{
-			if (e.Event.Key == Gdk.Key.Return)
-			{
-				Console.WriteLine("BOOP");
-			}
-
 		}
 
 		private void CheckButton_Clicked_SelectAll(object sender, EventArgs e, CheckButton activeCheckButton, int index)
@@ -769,19 +819,17 @@ namespace Vlc2Flac
 
 		private void Button_Clicked_Run(object sender, EventArgs e)
 		{
+			ConfigManager.DeserializeFromXml();
 			textBuffer.Clear();
-			Console.Write("FILE: ");
 			string givenFile;
 			if (fileChooserButton.Filename == null)
 			{
-				Console.Write("(NULL)");
 				givenFile = "";
 			}
 			else
 			{
 				givenFile = fileChooserButton.Filename;
 			}
-			Console.WriteLine(givenFile);
 			if (conversion_checkButton.Active)
 			{
 				givenFile = VLCHandler.Run(givenFile, RunClass.fixerForceOverwrite, RunClass.fixerKeepTemp, RunClass.deleteOriginal);
@@ -792,20 +840,13 @@ namespace Vlc2Flac
 				List<bool> tagAddList = new List<bool>();
 				List<string> tagNameList = new List<string>();
 				List<string> tagValueList = new List<string>();
-				Console.WriteLine("TAG STUFF START");
 				for (int i = 0; i < tag_checkButtonList.Count; i++)
 				{
 					tagRemoveList.Add(tag_checkButtonList[i][0].Active);
 					tagAddList.Add(tag_checkButtonList[i][1].Active);
 					tagNameList.Add(tag_entryList[i][0].Text);
 					tagValueList.Add(tag_entryList[i][1].Text);
-
-					Console.WriteLine(tagRemoveList[tagRemoveList.Count - 1]);
-					Console.WriteLine(tagAddList[tagAddList.Count - 1]);
-					Console.WriteLine(tagNameList[tagNameList.Count - 1]);
-					Console.WriteLine(tagValueList[tagValueList.Count - 1]);
 				}
-				Console.WriteLine("TAG STUFF END");
 				TagHandler.removeList = tagRemoveList;
 				TagHandler.addList = tagAddList;
 				TagHandler.nameList = tagNameList;
