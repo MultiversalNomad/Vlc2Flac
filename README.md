@@ -36,4 +36,4 @@ External programs used in this program:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;metaflac  
 	
 Confirmed Compatibility:  
-	Windows 7 64-bit
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Windows 7 64-bit
